@@ -10,25 +10,26 @@ jobs:
       - name: Checkout 代码
         uses: actions/checkout@v4
 
-      - name: 安装 vcpkg 及依赖 (protobuf, lua)
+      - name: 克隆 vcpkg 并引导
         run: |
           git clone https://github.com/Microsoft/vcpkg.git
           cd vcpkg
           .\bootstrap-vcpkg.bat
-          .\vcpkg install protobuf lua --triplet x64-windows
         shell: cmd
 
-      # 调试：确认 protobuf 已安装（可选）
-      - name: 检查 vcpkg 安装内容
-        run: dir vcpkg\installed\x64-windows\share\protobuf
-        shell: cmd
-
-      - name: 配置 CMake（显式指定 Protobuf_DIR）
+      - name: 安装依赖 (protobuf, lua)
         run: |
-          $Protobuf_DIR = "$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows\share\protobuf"
-          cmake -B build -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DProtobuf_DIR="$Protobuf_DIR"
+          cd vcpkg
+          .\vcpkg install protobuf lua --triplet x64-windows --recurse
+          if errorlevel 1 exit /b 1
+        shell: cmd
 
-      - name: 构建 Release 版本
+      - name: 配置 CMake（指定 vcpkg 工具链和 Protobuf_DIR）
+        run: |
+          $ProtobufDir = "$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows\share\protobuf"
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DProtobuf_DIR="$ProtobufDir"
+
+      - name: 构建 Release
         run: cmake --build build --config Release -j 4
 
       - name: 上传 EXE 产物
