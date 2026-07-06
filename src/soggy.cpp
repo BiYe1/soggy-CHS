@@ -403,7 +403,7 @@ void pb_add_prop_pair(google::protobuf::Map<uint32_t, PropValue> *map, PropType 
 std::unordered_set<unsigned short> dont_log_cmds = { CMD_ID_PingReq, CMD_ID_SceneEntityMoveReq, CMD_ID_EvtAnimatorParameterNotify, CMD_ID_EntityForceSyncReq, CMD_ID_SceneAvatarStaminaStepReq, CMD_ID_EvtFaceToDirNotify, CMD_ID_EvtAvatarUpdateFocusNotify, CMD_ID_AbilityInvocationsNotify, CMD_ID_AbilityInvocationFixedNotify, CMD_ID_ClientAbilityInitFinishNotify, CMD_ID_PingRsp, CMD_ID_PlayerStoreNotify, CMD_ID_EvtSetAttackTargetNotify, CMD_ID_EvtBeingHitNotify, CMD_ID_EvtEntityRenderersChangedNotify, CMD_ID_SceneEntityDrownReq };
 
 void YSConnection::send_packet(const google::protobuf::Message *body) {
-	const cmdids::CmdIdDetail *detail = cmdids::cmd_name_to_detail[body->GetTypeName()];
+	const cmdids::CmdIdDetail *detail = cmdids::cmd_name_to_detail[std::string(body->GetTypeName())];
 	ENetPacket *packet = encode_packet(detail->cmdid, body);
 	if (detail->enet_is_reliable) {
 		packet->flags |= ENET_PACKET_FLAG_RELIABLE;
