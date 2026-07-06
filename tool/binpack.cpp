@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 const char *const cpp_template = R"(// generated file
 
