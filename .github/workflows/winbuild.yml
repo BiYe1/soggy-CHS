@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build Windows EXE (MSYS2/MinGW)
 
 on: [push, pull_request]
 
@@ -10,30 +10,39 @@ jobs:
       - name: Checkout 代码
         uses: actions/checkout@v4
 
-      - name: 克隆 vcpkg 并引导
+      # 修复代码：将 string_view 转为 string（必须在编译前完成）
+      # 如果你已经在仓库中修复了，可以删除此步骤；否则保留
+      - name: 修复 src/soggy.cpp 中的 string_view 问题
         run: |
-          git clone https://github.com/Microsoft/vcpkg.git
-          cd vcpkg
-          .\bootstrap-vcpkg.bat
-        shell: cmd
+          # 使用 sed 简单替换（根据实际情况调整）
+          # 假设第 406 行类似 cmd_id_map[cmd_name] 且 cmd_name 是 string_view
+          # 更可靠的做法是手动在仓库中修改，这里仅作示例
+          sed -i 's/cmd_id_map\[\([^]]*\)\]/cmd_id_map[std::string(\1)]/g' src/soggy.cpp
+        shell: bash
 
-      - name: 安装依赖 (protobuf, lua)
+      - name: 安装 MSYS2 并配置环境
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: |
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-protobuf
+            mingw-w64-x86_64-lua
+          update: true
+
+      - name: 使用 MSYS2 构建
+        shell: msys2 {0}
         run: |
-          cd vcpkg
-          .\vcpkg install protobuf lua --triplet x64-windows --recurse
-          if errorlevel 1 exit /b 1
-        shell: cmd
-
-      - name: 配置 CMake（指定 vcpkg 工具链和 Protobuf_DIR）
-        run: |
-          $ProtobufDir = "$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows\share\protobuf"
-          cmake -B build -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DProtobuf_DIR="$ProtobufDir"
-
-      - name: 构建 Release
-        run: cmake --build build --config Release -j 4
+          # 进入仓库目录（MSYS2 自动映射）
+          cd $GITHUB_WORKSPACE
+          # 配置（使用 Unix Makefiles）
+          cmake -B build -G "Unix Makefiles"
+          # 构建（多核并行）
+          cmake --build build -j $(nproc)
 
       - name: 上传 EXE 产物
         uses: actions/upload-artifact@v4
         with:
           name: soggy-windows-exe
-          path: build/Release/*.exe
+          path: build/*.exe   # 通常 MinGW 生成在 build 根目录，后缀 .exe
